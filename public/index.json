@@ -1,0 +1,64 @@
+[
+{
+	"uri": "/",
+	"title": "ECR interface VPC endpoints",
+	"tags": [],
+	"description": "",
+	"content": "Kết nối an toàn, tiết kiệm chi phí cho ECS, ECR, CloudWatch sử dụng vpc endpoint Tổng quan Trong bài lab này, chúng ta sẽ cùng tìm hiểu cách thiết lập kết nối an toàn và tiết kiệm chi phí giữa ECS, ECR, CloudWatch, S3 sử dụng vpc endpoint\nNội dung  Giới thiệu Các bước chuẩn bị Tạo ECR private và push image Tạo ECS cluster Tạo các ENDPOINT Thử nghiệm kết nối Dọn dẹp tài nguyên  "
+},
+{
+	"uri": "/1-introduce/",
+	"title": "Giới thiệu",
+	"tags": [],
+	"description": "",
+	"content": "VPC Endpoint (Virtual Private Cloud Endpoint) là một dịch vụ trong Amazon Web Services (AWS) được thiết kế để kết nối giữa các tài nguyên trong một Virtual Private Cloud (VPC) của bạn và các dịch vụ AWS công cộng như Amazon S3, DynamoDB, SNS, SQS, ECR, CloudWatch và nhiều dịch vụ khác mà không cần thông qua Internet.\nTruy cập trực tiếp từ VPC đến các dịch vụ công cộng của AWS thông qua VPC Endpoint có nhiều lợi ích như:\n  Bảo mật: Dữ liệu không cần phải truy cập Internet, giảm nguy cơ bị tấn công từ bên ngoài.\n  Hiệu suất: Truy cập trực tiếp đến các dịch vụ, giảm độ trễ so với việc truy cập thông qua Internet.\n  Giảm chi phí: Không cần sử dụng gateway hoặc kết nối Direct Connect để truy cập dịch vụ AWS. Có hai loại VPC Endpoint:\n  Gateway Endpoint: Dùng cho các dịch vụ S3 và DynamoDB. Nó cho phép truy cập từ VPC đến các dịch vụ này thông qua một gateway được quản lý bởi AWS.\n  Interface Endpoint: Dùng cho hầu hết các dịch vụ AWS khác (ví dụ như SNS, SQS, Kinesis). Nó tạo ra một interface network trong VPC của bạn, giúp tạo kết nối trực tiếp với dịch vụ AWS. VPC Endpoint là một công cụ hữu ích trong việc tạo ra các mô hình kiến trúc cloud có hiệu suất cao và bảo mật.\n  Trong bài lab này, chúng ta cùng sử dụng VPC Endpoint để kết khởi chạy ECS cluster kết nối với các dịch vụ ECR, CLoudWatch để tăng cường bảo mật và giảm chi phí.\n"
+},
+{
+	"uri": "/2-prerequiste/",
+	"title": "Các bước chuẩn bị",
+	"tags": [],
+	"description": "",
+	"content": "Tạo VPC với 2 private subnet theo hình sau:\n Chọn VPC and more nhập tên VPC, CIDR, và chọn 2 AZ   Chọn 0 public subnet và 2 private subnet, chọn NAT gateways và S3 VPC endpoints là none   Tạo và đợi việc tạo VPC hoàn thành.  "
+},
+{
+	"uri": "/3-ecr-private/",
+	"title": "Tạo ECR private",
+	"tags": [],
+	"description": "",
+	"content": "Trong bước này, chúng ta sẽ thực hiện tạo ECR private và push docker image lên ECR này\n Tại ECR console, nhấn Create repository. Tại option Visibility settings chọn Private và Repository name    Tải source code mẫu và build image\n  Chọn vào repo và nhấn vào nút View push commands\n   Tag image vừa build và push lên ECR theo hướng dẫn  "
+},
+{
+	"uri": "/4-vpc-endpoint/",
+	"title": "Tạo VPC endpoint",
+	"tags": [],
+	"description": "",
+	"content": "Trong phần này, chúng ta sẽ cùng tạo VPC endpoint. Để kết nối ECS cluster với ECR, CloudWatch chúng ta cần tạo các endpoin sau:\n com.amazonaws.region.ecr.dkr: Endpoint này được sử dụng cho Docker Registry APIs. Docker client như push và pull dùng endpoint này. com.amazonaws.region.ecr.api: Endpoint này dùng để gọi đến Amazon ECR API. com.amazonaws.region.s3: ECR dùng s3 để lưu các layer vì vậy ta phải tạo s3 gateway endpoint thì ecs mới có thể pull các layer từ image của ECR. com.amazonaws.region.logs: Dùng cho cloud watch logs  "
+},
+{
+	"uri": "/5-portfwd/",
+	"title": "Port Forwarding",
+	"tags": [],
+	"description": "",
+	"content": "\rPort Forwarding is a useful way to redirect network traffic from one IP address - Port to another IP address - Port. With Port Forwarding we can access an EC2 instance located in the private subnet from our workstation.\n\rWe will configure Port Forwarding for the RDP connection between our machine and Private Windows Instance located in the private subnet we created for this exercise.\nCreate IAM user with permission to connect SSM  Go to IAM service management console  Click Users , then click Add users.    At the Add user page.  In the User name field, enter Portfwd. Click on Access key - Programmatic access. Click Next: Permissions.     Click Attach existing policies directly.\n In the search box, enter ssm. Click on AmazonSSMFullAccess. Click Next: Tags, click Next: Reviews. Click Create user.    Save Access key ID and Secret access key information to perform AWS CLI configuration.\n  Install and Configure AWS CLI and Session Manager Plugin To perform this hands-on, make sure your workstation has AWS CLI and Session Manager Plugin installed -manager-working-with-install-plugin.html)\nMore hands-on tutorials on installing and configuring the AWS CLI can be found here.\nWith Windows, when extracting the Session Manager Plugin installation folder, run the install.bat file with Administrator permission to perform the installation.\n\rImplement Portforwarding  Run the command below in Command Prompt on your machine to configure Port Forwarding.   aws ssm start-session --target (your ID windows instance) --document-name AWS-StartPortForwardingSession --parameters portNumber=\u0026quot;3389\u0026quot;,localPortNumber=\u0026quot;9999\u0026quot; --region (your region)\r\rWindows Private Instance Instance ID information can be found when you view the EC2 Windows Private Instance server details.\n\r Example command:  C:\\Windows\\system32\u0026gt;aws ssm start-session --target i-06343d7377486760c --document-name AWS-StartPortForwardingSession --parameters portNumber=\u0026quot;3389\u0026quot;,localPortNumber=\u0026quot;9999\u0026quot; --region ap-southeast-1\r\rIf your command gives an error like below: SessionManagerPlugin is not found. Please refer to SessionManager Documentation here: http://docs.aws.amazon.com/console/systems-manager/session-manager-plugin-not-found\nProve that you have not successfully installed the Session Manager Plugin. You may need to relaunch Command Prompt after installing Session Manager Plugin.\n\rConnect to the Private Windows Instance you created using the Remote Desktop tool on your workstation.  In the Computer section: enter localhost:9999.    Return to the administration interface of the System Manager - Session Manager service.  Click tab Session history. We will see session logs with Document name AWS-StartPortForwardingSession.    Congratulations on completing the lab on how to use Session Manager to connect and store session logs in S3 bucket. Remember to perform resource cleanup to avoid unintended costs.\n"
+},
+{
+	"uri": "/6-cleanup/",
+	"title": "Clean up resources",
+	"tags": [],
+	"description": "",
+	"content": "We will take the following steps to delete the resources we created in this exercise.\nDelete EC2 instance   Go to EC2 service management console\n Click Instances. Select both Public Linux Instance and Private Windows Instance instances. Click Instance state. Click Terminate instance, then click Terminate to confirm.    Go to IAM service management console\n Click Roles. In the search box, enter SSM. Click to select SSM-Role. Click Delete, then enter the role name SSM-Role and click Delete to delete the role.    Click Users.  Click on user Portfwd. Click Delete, then enter the user name Portfwd and click Delete to delete the user.    Delete S3 bucket   Access System Manager - Session Manager service management console.\n Click the Preferences tab. Click Edit. Scroll down. In the section S3 logging. Uncheck Enable to disable logging. Scroll down. Click Save.    Go to S3 service management console\n Click on the S3 bucket we created for this lab. (Example: lab-fcj-bucket-0001 ) Click Empty. Enter permanently delete, then click Empty to proceed to delete the object in the bucket. Click Exit.    After deleting all objects in the bucket, click Delete\n  Enter the name of the S3 bucket, then click Delete bucket to proceed with deleting the S3 bucket.  Delete VPC Endpoints  Go to VPC service management console  Click Endpoints. Select the 4 endpoints we created for the lab including SSM, SSMMESSAGES, EC2MESSAGES, S3GW. Click Actions. Click Delete VPC endpoints.     In the confirm box, enter delete.\n Click Delete to proceed with deleting endpoints.    Click the refresh icon, check that all endpoints have been deleted before proceeding to the next step.\n  Delete VPC   Go to VPC service management console\n Click Your VPCs. Click on Lab VPC. Click Actions. Click Delete VPC.    In the confirm box, enter delete to confirm, click Delete to delete Lab VPC and related resources.\n  "
+},
+{
+	"uri": "/categories/",
+	"title": "Categories",
+	"tags": [],
+	"description": "",
+	"content": ""
+},
+{
+	"uri": "/tags/",
+	"title": "Tags",
+	"tags": [],
+	"description": "",
+	"content": ""
+}]
